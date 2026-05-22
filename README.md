@@ -24,7 +24,7 @@ Terragrunt makes dependencies explicit:
 
 ```hcl
 dependencies {
-  paths = ["../prerequisites", "../networking"]
+  paths = ["../networking"]
 }
 ```
 
@@ -51,13 +51,8 @@ Terragrunt is **not** used to eliminate code duplication across environments. Ea
 ### Component Dependency Graph
 
 ```
-          prerequisites
-          (ECR, IAM, Secrets, SG)
-                |
-       _________|_________
-       |                  |
-   networking          database
-   (VPC, Subnets,      (RDS PostgreSQL)
+   networking ──────► database
+   (VPC, Subnets,     (RDS PostgreSQL)
     NAT Gateway)
 ```
 
@@ -84,14 +79,6 @@ Each environment maps to a separate AWS account:
 │   ├── environment.hcl             # Common variables (generates common_vars.tf)
 │   ├── providers/                  # Modular provider profiles
 │   │   └── aws.hcl                 # AWS provider + default tags (generates providers.tf)
-│   ├── prerequisites/              # Foundational resources
-│   │   ├── terragrunt.hcl          # Includes, dependencies, env-specific inputs
-│   │   ├── ecr.tf
-│   │   ├── iam.tf
-│   │   ├── secrets.tf
-│   │   ├── security-group.tf
-│   │   ├── variables.tf
-│   │   └── outputs.tf
 │   ├── networking/                 # Network layer
 │   │   ├── terragrunt.hcl
 │   │   ├── vpc.tf
@@ -106,11 +93,11 @@ Each environment maps to a separate AWS account:
 │       └── outputs.tf
 ├── production/                     # Production environment (own copy of .tf files)
 │   └── ...                         # Same structure, production-sized values
-├── .github/workflows/
-│   ├── pr.yml                      # Terragrunt plan on pull request
-│   └── apply.yml                   # Terragrunt apply on merge to main
-└── docs/
-    └── migration-guide.md          # Terraform to Terragrunt migration tips
+└── .github/workflows/
+    ├── pr.yml                      # Terragrunt plan on pull request
+    ├── apply.yml                   # Terragrunt apply on merge to main
+    ├── run_terragrunt.yaml         # Reusable workflow for plan/apply
+    └── format.yml                  # Terraform and Terragrunt format check
 ```
 
 ### What Gets Committed vs Generated
@@ -175,7 +162,7 @@ locals {
 **Why?**
 
 - **Single source of truth per environment**: Provider version and configuration defined once. When upgrading the AWS provider from v5 to v6, you change one file per environment — not every component.
-- **Selective inclusion**: The prerequisites component needs only the AWS provider. An application component might need AWS + Helm. Each component declares exactly what it uses, keeping the generated `providers.tf` minimal.
+- **Selective inclusion**: A networking component needs only the AWS provider. An application component might need AWS + Helm. Each component declares exactly what it uses, keeping the generated `providers.tf` minimal.
 - **Consistent tagging**: Default tags are set in the AWS provider profile. Every resource created in that environment is automatically tagged without developers needing to remember `tags = local.common_tags`.
 
 ### Why Per-Component State Files?
@@ -183,9 +170,8 @@ locals {
 Each component has its own Terraform state file:
 
 ```
-<app>/prerequisites/nonprod/terraform.tfstate
-<app>/networking/nonprod/terraform.tfstate
-<app>/database/nonprod/terraform.tfstate
+my-app-infra/networking/terraform.tfstate
+my-app-infra/database/terraform.tfstate
 ```
 
 **Why not one state file per environment?**
@@ -193,7 +179,7 @@ Each component has its own Terraform state file:
 - **Blast radius**: A corrupted or locked state file affects one component, not the entire environment.
 - **Concurrency**: Team members can work on different components simultaneously without state lock contention.
 - **Plan speed**: `terraform plan` only evaluates resources in the targeted component. For large environments with hundreds of resources, this saves significant time.
-- **Lifecycle alignment**: Prerequisites rarely change after initial setup. Database schemas evolve independently of networking. Separate state reflects these different change frequencies.
+- **Lifecycle alignment**: Networking rarely changes after initial setup. Database schemas evolve independently. Separate state reflects these different change frequencies.
 
 ### Why Explicit Dependencies Over Implicit Data Sources?
 
@@ -201,7 +187,7 @@ Components declare dependencies using Terragrunt `dependencies` blocks:
 
 ```hcl
 dependencies {
-  paths = ["../prerequisites"]
+  paths = ["../networking"]
 }
 ```
 
