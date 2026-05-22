@@ -5,7 +5,7 @@ remote_state {
     if_exists = "overwrite"
   }
   config = {
-    bucket       = "my-terraform-state.nonprod.ap-southeast-2"
+    bucket       = "my-terraform-state.production.ap-southeast-2"
     key          = "my-app-infra/${path_relative_to_include()}/terraform.tfstate"
     region       = "ap-southeast-2"
     encrypt      = true
