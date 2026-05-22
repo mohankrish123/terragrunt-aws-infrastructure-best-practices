@@ -1,0 +1,53 @@
+# name: Apply on merge
+#
+# on:
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - 'nonprod/**'
+#       - 'production/**'
+#       - '.github/workflows/**'
+#
+# jobs:
+#   detect-changes:
+#     runs-on: ubuntu-latest
+#     name: Detect Changed Environments
+#     outputs:
+#       nonprod_changed: ${{ steps.check.outputs.nonprod_any_changed }}
+#       production_changed: ${{ steps.check.outputs.production_any_changed }}
+#     steps:
+#       - uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+#       - name: Check for changes
+#         id: check
+#         uses: tj-actions/changed-files@v46
+#         with:
+#           files_yaml: |
+#             nonprod:
+#               - nonprod/**
+#             production:
+#               - production/**
+#
+#   apply-nonprod:
+#     name: Apply Nonprod
+#     needs: detect-changes
+#     if: ${{ needs.detect-changes.outputs.nonprod_changed == 'true' }}
+#     uses: ./.github/workflows/run_terragrunt.yaml
+#     secrets: inherit
+#     with:
+#       tg_working_dir: nonprod
+#       tg_command: apply
+#       aws_role: ${{ vars.AWS_ROLE_NONPROD }}
+#
+#   apply-production:
+#     name: Apply Production
+#     needs: detect-changes
+#     if: ${{ needs.detect-changes.outputs.production_changed == 'true' }}
+#     uses: ./.github/workflows/run_terragrunt.yaml
+#     secrets: inherit
+#     with:
+#       tg_working_dir: production
+#       tg_command: apply
+#       aws_role: ${{ vars.AWS_ROLE_PRODUCTION }}

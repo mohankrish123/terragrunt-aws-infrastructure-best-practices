@@ -1,0 +1,39 @@
+# name: Run Terragrunt
+#
+# on:
+#   workflow_call:
+#     inputs:
+#       tg_working_dir:
+#         required: true
+#         type: string
+#       tg_command:
+#         required: true
+#         type: string
+#       aws_role:
+#         required: true
+#         type: string
+#
+# jobs:
+#   run-terragrunt:
+#     name: Run terragrunt
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
+#
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           role-to-assume: ${{ inputs.aws_role }}
+#           role-session-name: GithubSession
+#           aws-region: ap-southeast-2
+#           role-duration-seconds: 1200
+#
+#       - name: Install asdf & tools
+#         uses: asdf-vm/actions/install@v4
+#
+#       - name: "Run terragrunt ${{ inputs.tg_command }} in ${{ inputs.tg_working_dir }}"
+#         working-directory: ${{ inputs.tg_working_dir }}
+#         run: |
+#           terragrunt init --all --non-interactive
+#           terragrunt run --all ${{ inputs.tg_command }} --non-interactive
